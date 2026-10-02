@@ -28,17 +28,21 @@ jobs:
             -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' `
             -Name 'SecurityLayer' -Value 1 -Force
 
-          # Allow RDP only through the Tailscale interface.
+          # Remove any previous rule. Tailscale is installed in a later step,
+          # so do not reference a Tailscale interface here.
           Get-NetFirewallRule -DisplayName 'RDP-Tailscale' -ErrorAction SilentlyContinue |
             Remove-NetFirewallRule -ErrorAction SilentlyContinue
 
+          # RDP will be restricted to Tailscale's CGNAT address range.
+          # This avoids relying on the interface alias, which may differ
+          # between GitHub Windows runner images.
           New-NetFirewallRule `
             -DisplayName 'RDP-Tailscale' `
             -Direction Inbound `
             -Action Allow `
             -Protocol TCP `
             -LocalPort 3389 `
-            -InterfaceAlias 'Tailscale' `
+            -RemoteAddress '100.64.0.0/10' `
             -Profile Any
 
           Restart-Service -Name TermService -Force
@@ -192,4 +196,3 @@ jobs:
             Write-Host "[$(Get-Date)] Secure RDP active."
             Start-Sleep -Seconds 300
           }
-          
